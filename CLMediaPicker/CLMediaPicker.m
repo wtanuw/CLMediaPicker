@@ -28,7 +28,7 @@ static const CGFloat kHeaderHeight = 28;
 
 @interface CLMediaPicker ()<UITableViewDataSource, UITableViewDelegate>
 
-@property(nonatomic, strong) NSMutableArray *pickedItems;
+@property(nonatomic, strong) NSMutableSet *pickedItems;
 @property(nonatomic, strong) MPMediaQuery *query;
 @property(nonatomic) CLMediaPickerType currentMediaType;
 @property(nonatomic) BOOL topLevelView;
@@ -81,7 +81,7 @@ static const CGFloat kHeaderHeight = 28;
 	[self activityStarted];
 
 	if (!self.pickedItems) {
-		self.pickedItems = [[NSMutableArray alloc] init];
+		self.pickedItems = [[NSMutableSet alloc] init];
 	}
 	
 	UIBarButtonItem *backButton = nil;
@@ -211,6 +211,12 @@ static const CGFloat kHeaderHeight = 28;
 
 - (void)activityEnded {
 	// Subclasses can override to hide their own activity indicator.
+}
+- (void)clearPickedItems{
+    if (self.pickedItems){
+        [self.pickedItems removeAllObjects];
+        [self updateTitle];
+    }
 }
 
 #pragma mark - UITableViewDataSource
@@ -369,17 +375,98 @@ static const CGFloat kHeaderHeight = 28;
 		cell.accessoryType = mediaType == CLMediaPickerSongs ? UITableViewCellAccessoryNone : UITableViewCellAccessoryDisclosureIndicator;
 	}
 	
-	if (self.allowsPickingMultipleItems && (self.isSearching || self.query)) {
-		UIButton *addButton = [UIButton buttonWithType:UIButtonTypeCustom];
-		[addButton setImage:[UIImage imageNamed:@"add_new"] forState:UIControlStateNormal];
-		[addButton setFrame:CGRectMake(7, 7, 30, 30)];
-		[addButton setIndexPath:indexPath];
-		[addButton addTarget:self action:@selector(addButtonAction:) forControlEvents:UIControlEventTouchUpInside];
-		[addButton setAccessibilityLabel:[CLMediaPicker localizedStringForKey:@"Add All"]];
-		cell.accessoryView = addButton;
+    BOOL isPicked = NO;
+    if (self.isSearching) {
+        NSString *key = self.filteredIndex[indexPath.section];
+        NSArray *collections = [self.filteredItems objectForKey:key];
+        MPMediaItemCollection *col = collections[indexPath.row];
+        
+        isPicked = [self chceckPickedOrNot:col];
+    }
+    else if (self.query) {
+        if (self.currentMediaType == CLMediaPickerSongs) {
+            MPMediaItemCollection *col;
+            if (self.topLevelView) {
+                NSString *key = self.sectionIndex[indexPath.section];
+                col = [self.sectionIndexDict objectForKey:key][indexPath.row];
+            }
+            else if (self.useItems) {
+                col = [MPMediaItemCollection collectionWithItems:@[self.items[indexPath.row]]];
+            }
+            else {
+                col = self.items[indexPath.row];
+            }
+            
+            isPicked = [self chceckPickedOrNot:col];
+        }
+        else {
+            isPicked = [self chceckPickedOrNot:collection];
+        }
+    }
+    
+	if (self.allowsPickingMultipleItems &&
+        (self.isSearching || self.query) &&
+        !isPicked)
+    {
+        UIButton *addButton = [UIButton buttonWithType:UIButtonTypeCustom];
+        [addButton setImage:[UIImage imageNamed:@"add_new"] forState:UIControlStateNormal];
+        [addButton setFrame:CGRectMake(7, 7, 30, 30)];
+        [addButton setIndexPath:indexPath];
+        [addButton addTarget:self action:@selector(addButtonAction:) forControlEvents:UIControlEventTouchUpInside];
+        [addButton setAccessibilityLabel:[CLMediaPicker localizedStringForKey:@"Add All"]];
+        cell.accessoryView = addButton;
 	}
 	
 	return cell;
+}
+
+- (BOOL)chceckPickedOrNot:(id) toCheck
+{
+    BOOL ret = NO;
+    for (MPMediaEntity* entity in self.pickedItems)
+    {
+        if ([entity isKindOfClass:[MPMediaItemCollection class]])
+        {
+            MPMediaItemCollection *collection = (MPMediaItemCollection *)entity;
+            if ([collection isEqual:toCheck]){ // both collection
+                ret = YES;
+                break;
+            }
+            if ([toCheck isKindOfClass:[MPMediaItem class]]){
+                for (MPMediaItem *colItem in collection.items){
+                    if ([colItem isEqual:toCheck]){
+                        ret = YES;
+                        break;
+                    }
+                }
+            }
+            else if ([toCheck isKindOfClass:[MPMediaItemCollection class]])
+            {
+                MPMediaItemCollection *toCheckCol = (MPMediaItemCollection *)toCheck;
+                int count = 0;
+                for (MPMediaItem *toCheckColItem in toCheckCol.items)
+                {
+                    for (MPMediaItem *colItem in collection.items){
+                        if ([colItem isEqual:toCheckColItem]){
+                            count++;
+                        }
+                    }
+                }
+                if (count == toCheckCol.count){
+                    ret = YES;
+                    break;
+                }
+            }
+        }
+        else {
+            MPMediaItem *item = (MPMediaItem *)entity;
+            if ([item isEqual:toCheck]){
+                ret = YES;
+                break;
+            }
+        }
+    }
+    return ret;
 }
 
 #pragma mark - UITableViewDelegate
@@ -525,6 +612,11 @@ static const CGFloat kHeaderHeight = 28;
 		CLMediaPicker *picker = [self copy];
 		picker.query = newQuery;
 		picker.currentMediaType = newMediaType;
+        
+        CLMediaTableViewCell *cell =
+        [self.tableView cellForRowAtIndexPath:indexPath];
+        picker.title = cell.textLabel.text;
+        
 		if (!self.query && !self.isSearching) {
 			picker.topLevelView = YES;
 		}
@@ -581,6 +673,9 @@ static const CGFloat kHeaderHeight = 28;
 	picker.query = [self.query copyWithZone:zone];
 	picker.showsCloudItems = self.showsCloudItems;
 	picker.allowsPickingMultipleItems = self.allowsPickingMultipleItems;
+    if ([picker respondsToSelector:@selector(setShowsItemsWithProtectedAssets:)]){
+        picker.showsItemsWithProtectedAssets = self.showsItemsWithProtectedAssets;
+    }
 	picker.currentMediaType = self.currentMediaType;
 	picker.backButtonImage = self.backButtonImage;
 	picker.cancelButtonImage = self.cancelButtonImage;
@@ -756,8 +851,18 @@ static const CGFloat kHeaderHeight = 28;
 		
 		UIAlertAction* yesButton = [UIAlertAction actionWithTitle:[CLMediaPicker localizedStringForKey:@"Yes"]
 															style:UIAlertActionStyleDefault
-														  handler:^(UIAlertAction * action) {
+														  handler:^(UIAlertAction * action)
+        {
 			[actionController dismissViewControllerAnimated:YES completion:nil];
+            NSArray *vcs = [self.navigationController viewControllers];
+            for (UIViewController *vc in vcs)
+            {
+                if ([vc isKindOfClass:[CLMediaPicker class]])
+                {
+                  [(CLMediaPicker *)vc clearPickedItems];
+                }
+            }
+
 			if (completionBlock) {
 				completionBlock();
 			}
@@ -845,11 +950,13 @@ static const CGFloat kHeaderHeight = 28;
 		NSArray *collections = [query collections];
 		for (MPMediaItemCollection *collection in collections) {
 			if (collection.count > 0) {
-				[self.pickedItems addObjectsFromArray:[query collections]];
+                [self.pickedItems addObject:collection];
 			}
 		}
 	}
 	[self updateTitle];
+    [self.tableView reloadRowsAtIndexPaths:@[indexPath]
+                          withRowAnimation:UITableViewRowAnimationNone];
 }
 
 - (MPMediaQuery *)queryForType:(CLMediaPickerType)type {
@@ -902,21 +1009,21 @@ static const CGFloat kHeaderHeight = 28;
 
 - (void)updateTitle {
 	if (self.pickedItems.count == 0) {
-		self.title = [CLMediaPicker localizedStringForKey:@"choose items"];
+//		self.title = [CLMediaPicker localizedStringForKey:@"choose items"];
 		self.doneButton.enabled = NO;
 	}
 	else {
-		NSUInteger count = 0;
-		for (MPMediaEntity *entity in self.pickedItems) {
-			if ([entity isKindOfClass:[MPMediaItemCollection class]]) {
-				MPMediaItemCollection *collection = (MPMediaItemCollection *)entity;
-				count += collection.count;
-			}
-			else {
-				count++;
-			}
-		}
-		self.title = [NSString stringWithFormat:[CLMediaPicker localizedStringForKey:@"%li items"], (unsigned long)count];
+//		NSUInteger count = 0;
+//		for (MPMediaEntity *entity in self.pickedItems) {
+//			if ([entity isKindOfClass:[MPMediaItemCollection class]]) {
+//				MPMediaItemCollection *collection = (MPMediaItemCollection *)entity;
+//				count += collection.count;
+//			}
+//			else {
+//				count++;
+//			}
+//		}
+//		self.title = [NSString stringWithFormat:[CLMediaPicker localizedStringForKey:@"%li items"], (unsigned long)count];
 		self.doneButton.enabled = YES;
 	}
 }

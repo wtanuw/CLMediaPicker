@@ -45,6 +45,7 @@ static inline CLMediaPickerType CLMediaPickerTypeLast() { return CLMediaPickerGe
 @property(nonatomic) BOOL allowsPickingMultipleItems; // default is NO
 @property(nonatomic) BOOL showsCloudItems; // default is YES
 @property(nonatomic) BOOL isModal; // default is NO
+@property(nonatomic) BOOL showsItemsWithProtectedAssets; // default is YES
 
 @property(nonatomic, strong) UIImage *backButtonImage; // if unset, uses text-based button
 @property(nonatomic, strong) UIImage *cancelButtonImage; // if unset, uses text-based button
@@ -59,6 +60,8 @@ static inline CLMediaPickerType CLMediaPickerTypeLast() { return CLMediaPickerGe
 
 - (void)activityStarted; // Subclasses can override to show their own activity indicator.
 - (void)activityEnded; // Subclasses can override to hide their own activity indicator.
+
+- (void)clearPickedItems;
 
 @end
 
