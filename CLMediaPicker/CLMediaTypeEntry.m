@@ -29,31 +29,31 @@
 		switch (mediaType) {
 			case CLMediaPickerAlbums:
 				self.title = [CLMediaPicker localizedStringForKey:@"Albums"];
-				self.icon = [UIImage imageNamed:@"album"];
+				self.icon = [UIImage imageNamed:@"album" inBundle:[NSBundle bundleForClass:[self class]] compatibleWithTraitCollection:nil];
 				break;
 			case CLMediaPickerArtists:
 				self.title = [CLMediaPicker localizedStringForKey:@"Artists"];
-				self.icon = [UIImage imageNamed:@"artist"];
+				self.icon = [UIImage imageNamed:@"artist" inBundle:[NSBundle bundleForClass:[self class]] compatibleWithTraitCollection:nil];
 				break;
 			case CLMediaPickerPlaylists:
 				self.title = [CLMediaPicker localizedStringForKey:@"Playlists"];
-				self.icon = [UIImage imageNamed:@"playlist"];
+				self.icon = [UIImage imageNamed:@"playlist" inBundle:[NSBundle bundleForClass:[self class]] compatibleWithTraitCollection:nil];
 				break;
 			case CLMediaPickerSongs:
 				self.title = [CLMediaPicker localizedStringForKey:@"Songs"];
-				self.icon = [UIImage imageNamed:@"song"];
+				self.icon = [UIImage imageNamed:@"song" inBundle:[NSBundle bundleForClass:[self class]] compatibleWithTraitCollection:nil];
 				break;
 			case CLMediaPickerPodcasts:
 				self.title = [CLMediaPicker localizedStringForKey:@"Podcasts"];
-				self.icon = [UIImage imageNamed:@"podcast"];
+				self.icon = [UIImage imageNamed:@"podcast" inBundle:[NSBundle bundleForClass:[self class]] compatibleWithTraitCollection:nil];
 				break;
 			case CLMediaPickerAudiobooks:
 				self.title = [CLMediaPicker localizedStringForKey:@"Audiobooks"];
-				self.icon = [UIImage imageNamed:@"audiobook"];
+				self.icon = [UIImage imageNamed:@"audiobook" inBundle:[NSBundle bundleForClass:[self class]] compatibleWithTraitCollection:nil];
 				break;
 			case CLMediaPickerGenre:
 				self.title = [CLMediaPicker localizedStringForKey:@"Genres"];
-				self.icon = [UIImage imageNamed:@"genre"];
+				self.icon = [UIImage imageNamed:@"genre" inBundle:[NSBundle bundleForClass:[self class]] compatibleWithTraitCollection:nil];
 				break;
 			default:
 				self.title = [CLMediaPicker localizedStringForKey:@"Unknown"];

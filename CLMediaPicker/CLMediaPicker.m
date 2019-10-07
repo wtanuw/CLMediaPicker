@@ -88,38 +88,42 @@ static const CGFloat kHeaderHeight = 28;
 	if (self.backButtonImage) {
 		backButton = [self toolbarItemForImage:self.backButtonImage target:self action:@selector(backButtonAction:) accessibilityLabel:[CLMediaPicker localizedStringForKey:@"Back"]];
 	}
-	UIBarButtonItem *cancelButton = nil;
-	if (self.cancelButtonImage) {
-		cancelButton = [self toolbarItemForImage:self.cancelButtonImage target:self action:@selector(cancelButtonAction:) accessibilityLabel:[CLMediaPicker localizedStringForKey:@"Cancel"]];
-	}
-	else {
-		cancelButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemCancel target:self action:@selector(cancelButtonAction:)];
-	}
-	if (self.doneButtonImage) {
-		self.doneButton = [self toolbarItemForImage:self.doneButtonImage target:self action:@selector(doneButtonAction:) accessibilityLabel:[CLMediaPicker localizedStringForKey:@"Done"]];
-	}
-	else {
-		self.doneButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemDone target:self action:@selector(doneButtonAction:)];
-	}
+    UIBarButtonItem *cancelButton = nil;
+    if (!self.hideCancelButton) {
+        if (self.cancelButtonImage) {
+            cancelButton = [self toolbarItemForImage:self.cancelButtonImage target:self action:@selector(cancelButtonAction:) accessibilityLabel:[CLMediaPicker localizedStringForKey:@"Cancel"]];
+        }
+        else {
+            cancelButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemCancel target:self action:@selector(cancelButtonAction:)];
+        }
+    }
+    if (!self.hideDoneButton) {
+        if (self.doneButtonImage) {
+            self.doneButton = [self toolbarItemForImage:self.doneButtonImage target:self action:@selector(doneButtonAction:) accessibilityLabel:[CLMediaPicker localizedStringForKey:@"Done"]];
+        }
+        else {
+            self.doneButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemDone target:self action:@selector(doneButtonAction:)];
+        }
+    }
 	
 	if (!self.isModal && backButton) {
 		self.navigationItem.leftBarButtonItem = backButton;
 	}
 	
 	if (self.allowsPickingMultipleItems && self.isModal) {
-		self.navigationItem.rightBarButtonItems = @[self.doneButton];
-		self.navigationItem.leftBarButtonItems = @[cancelButton];
+		if (!self.hideDoneButton) self.navigationItem.rightBarButtonItems = @[self.doneButton];
+		if (!self.hideCancelButton) self.navigationItem.leftBarButtonItems = @[cancelButton];
 	}
 	else if (self.allowsPickingMultipleItems) {
-		self.navigationItem.rightBarButtonItems = @[self.doneButton, cancelButton];
+		if (!self.hideCancelButton && !self.hideDoneButton) self.navigationItem.rightBarButtonItems = @[self.doneButton, cancelButton];
 	}
 	else if (self.isModal) {
-		self.navigationItem.leftBarButtonItems = @[cancelButton];
+		if (!self.hideCancelButton) self.navigationItem.leftBarButtonItems = @[cancelButton];
 	}
 	else {
-		self.navigationItem.rightBarButtonItems = @[cancelButton];
+		if (!self.hideCancelButton) self.navigationItem.rightBarButtonItems = @[cancelButton];
 	}
-	
+    
 	// setup table view
 	self.tableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStylePlain];
 	self.tableView.delegate = self;
@@ -160,7 +164,13 @@ static const CGFloat kHeaderHeight = 28;
 		self.searchBar.delegate = self;
 		self.searchBar.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;
 		[self.view addSubview:self.searchBar];
-		
+        
+//        if (@available(iOS 11.0, *)) {
+//
+//        } else {
+//            // Fallback on earlier versions
+//        }
+        
 		[self.view addConstraints:[NSLayoutConstraint
 								   constraintsWithVisualFormat:@"H:|[searchBar]|"
 								   options:NSLayoutFormatAlignAllCenterX
@@ -316,7 +326,7 @@ static const CGFloat kHeaderHeight = 28;
 	else if (indexPath.row < self.items.count) {
 		topLevel = YES;
 		CLMediaTypeEntry *entry = self.items[indexPath.row];
-		cell.imageView.image = entry.icon;
+		if (!self.hideImageIcon) cell.imageView.image = entry.icon;
 		cell.textLabel.text = entry.title;
 		cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
 	}
@@ -326,37 +336,42 @@ static const CGFloat kHeaderHeight = 28;
 		switch (mediaType) {
 			case CLMediaPickerArtists:
 				cell.textLabel.text = item.artist ? item.artist : item.albumArtist;
-				placeholderImage = [UIImage imageNamed:@"artist"];
+				placeholderImage = [UIImage imageNamed:@"artist" inBundle:[NSBundle bundleForClass:[self class]] compatibleWithTraitCollection:nil];
 				break;
 			case CLMediaPickerAlbums:
 				cell.textLabel.text = item.albumTitle;
-				placeholderImage = [UIImage imageNamed:@"album"];
+				placeholderImage = [UIImage imageNamed:@"album" inBundle:[NSBundle bundleForClass:[self class]] compatibleWithTraitCollection:nil];
 				cell.detailTextLabel.text = item.artist;
 				break;
 			case CLMediaPickerPodcasts:
 				cell.textLabel.text = item.podcastTitle;
-				placeholderImage = [UIImage imageNamed:@"podcast"];
+				placeholderImage = [UIImage imageNamed:@"podcast" inBundle:[NSBundle bundleForClass:[self class]] compatibleWithTraitCollection:nil];
 				break;
 			case CLMediaPickerAudiobooks:
 				cell.textLabel.text = item.albumTitle;
-				placeholderImage = [UIImage imageNamed:@"audiobook"];
+				placeholderImage = [UIImage imageNamed:@"audiobook" inBundle:[NSBundle bundleForClass:[self class]] compatibleWithTraitCollection:nil];
 				break;
 			case CLMediaPickerPlaylists:
 			{
 				MPMediaPlaylist *playlist = (MPMediaPlaylist *)collection;
 				cell.textLabel.text = playlist.name;
-				placeholderImage = [UIImage imageNamed:@"playlist"];
+				placeholderImage = [UIImage imageNamed:@"playlist" inBundle:[NSBundle bundleForClass:[self class]] compatibleWithTraitCollection:nil];
 				break;
 			}
 			case CLMediaPickerGenre:
 				cell.textLabel.text = item.genre;
-				placeholderImage = [UIImage imageNamed:@"genre"];
+				placeholderImage = [UIImage imageNamed:@"genre" inBundle:[NSBundle bundleForClass:[self class]] compatibleWithTraitCollection:nil];
+                
 				break;
 			default:
 				if (item) {
 					cell.textLabel.text = item.title;
-					cell.detailTextLabel.text = [NSString stringWithFormat:@"%@ - %@", item.artist, item.albumTitle];
-					placeholderImage = [UIImage imageNamed:@"song"];
+                    if (item.artist != nil && item.albumTitle != nil) {
+                        cell.detailTextLabel.text = [NSString stringWithFormat:@"%@ - %@", item.artist, item.albumTitle];
+                    } else {
+                        cell.detailTextLabel.text = [NSString stringWithFormat:@"%@", item.artist ? item.artist : item.albumTitle ? item.albumTitle : @""];
+                    }
+					placeholderImage = [UIImage imageNamed:@"song" inBundle:[NSBundle bundleForClass:[self class]] compatibleWithTraitCollection:nil];
 				}
 				break;
 		}
@@ -370,7 +385,7 @@ static const CGFloat kHeaderHeight = 28;
 				}
 			}
 		}
-		UIImage *icon = item.artwork && item.artwork.bounds.size.width && item.artwork.bounds.size.height ? [item.artwork imageWithSize:iconSize] : placeholderImage;
+        UIImage *icon = item.artwork && item.artwork.bounds.size.width && item.artwork.bounds.size.height ? [item.artwork imageWithSize:iconSize] : (self.hideImageIcon) ? placeholderImage : nil;
 		cell.imageView.image = icon;
 		cell.accessoryType = mediaType == CLMediaPickerSongs ? UITableViewCellAccessoryNone : UITableViewCellAccessoryDisclosureIndicator;
 	}
@@ -684,6 +699,9 @@ static const CGFloat kHeaderHeight = 28;
 	picker.tableViewCellBackgroundColor = [self.tableViewCellBackgroundColor copyWithZone:zone];
 	picker.tableViewCellTextColor = [self.tableViewCellTextColor copyWithZone:zone];
 	picker.tableViewCellSubtitleColor = [self.tableViewCellSubtitleColor copyWithZone:zone];
+    picker.hideCancelButton = self.hideCancelButton;
+    picker.hideDoneButton = self.hideDoneButton;
+    picker.hideImageIcon = self.hideImageIcon;
 	return picker;
 }
 
@@ -695,7 +713,16 @@ static const CGFloat kHeaderHeight = 28;
 	dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
 		if (self.query) {
 			if (self.useItems) {
-				self.items = [self.query items];
+                if (self.showsItemsWithProtectedAssets) {
+                    NSMutableArray *nonProtect = [NSMutableArray array];
+                    for (MPMediaItem *item in [self.query items]) {
+                        if (!item.protectedAsset) {
+                            [nonProtect addObject:item];
+                        }
+                    }
+                } else {
+                    self.items = [self.query items];
+                }
 			}
 			else {
 				NSArray *collections = [self.query collections];

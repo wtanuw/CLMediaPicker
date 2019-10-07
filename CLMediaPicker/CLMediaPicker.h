@@ -50,6 +50,9 @@ static inline CLMediaPickerType CLMediaPickerTypeLast() { return CLMediaPickerGe
 @property(nonatomic, strong) UIImage *backButtonImage; // if unset, uses text-based button
 @property(nonatomic, strong) UIImage *cancelButtonImage; // if unset, uses text-based button
 @property(nonatomic, strong) UIImage *doneButtonImage; // if unset, uses text-based button
+@property(nonatomic) BOOL hideCancelButton; // default is NO
+@property(nonatomic) BOOL hideDoneButton; // default is NO
+@property(nonatomic) BOOL hideImageIcon; // default is NO
 
 @property(nonatomic, strong) UIColor *tableViewSeparatorColor;
 @property(nonatomic, strong) UIColor *tableViewCellBackgroundColor;
