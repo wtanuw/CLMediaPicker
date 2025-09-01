@@ -51,10 +51,14 @@
 				self.title = [CLMediaPicker localizedStringForKey:@"Audiobooks"];
 				self.icon = [UIImage imageNamed:@"audiobook" inBundle:[NSBundle bundleForClass:[self class]] compatibleWithTraitCollection:nil];
 				break;
-			case CLMediaPickerGenre:
-				self.title = [CLMediaPicker localizedStringForKey:@"Genres"];
-				self.icon = [UIImage imageNamed:@"genre" inBundle:[NSBundle bundleForClass:[self class]] compatibleWithTraitCollection:nil];
-				break;
+            case CLMediaPickerGenre:
+                self.title = [CLMediaPicker localizedStringForKey:@"Genres"];
+                self.icon = [UIImage imageNamed:@"genre" inBundle:[NSBundle bundleForClass:[self class]] compatibleWithTraitCollection:nil];
+                break;
+            case CLMediaPickerMock:
+                self.title = [CLMediaPicker localizedStringForKey:@"Mock"];
+                self.icon = [UIImage imageNamed:@"add_new" inBundle:[NSBundle bundleForClass:[self class]] compatibleWithTraitCollection:nil];
+                break;
 			default:
 				self.title = [CLMediaPicker localizedStringForKey:@"Unknown"];
 				self.icon = nil;

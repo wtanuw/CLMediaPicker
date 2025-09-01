@@ -246,8 +246,9 @@ static const CGFloat kHeaderHeight = 28;
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
 	if (self.isSearching) {
-		NSArray *rows = self.filteredItems[self.filteredIndex[section]];
-		return rows.count;
+        NSString *key = self.filteredIndex[section];
+        NSArray *collections = [self.filteredItems objectForKey:key];
+		return collections.count;
 	}
 	else if (self.currentMediaType == CLMediaPickerSongs && self.topLevelView) {
 		NSString *key = self.sectionIndex[section];
@@ -319,7 +320,11 @@ static const CGFloat kHeaderHeight = 28;
 		else {
 			if (self.items.count > indexPath.row) {
 				collection = self.items[indexPath.row];
-				item = [collection representativeItem];
+                if (self.isUseMockup) {
+                    
+                } else {
+                    item = [collection representativeItem];
+                }
 			}
 		}
 	}
@@ -358,25 +363,37 @@ static const CGFloat kHeaderHeight = 28;
 				placeholderImage = [UIImage imageNamed:@"playlist" inBundle:[NSBundle bundleForClass:[self class]] compatibleWithTraitCollection:nil];
 				break;
 			}
-			case CLMediaPickerGenre:
-				cell.textLabel.text = item.genre;
-				placeholderImage = [UIImage imageNamed:@"genre" inBundle:[NSBundle bundleForClass:[self class]] compatibleWithTraitCollection:nil];
-                
-				break;
+            case CLMediaPickerGenre:
+                cell.textLabel.text = item.genre;
+                placeholderImage = [UIImage imageNamed:@"genre" inBundle:[NSBundle bundleForClass:[self class]] compatibleWithTraitCollection:nil];
+                break;
 			default:
 				if (item) {
-					cell.textLabel.text = item.title;
+                    if ([item respondsToSelector:@selector(title)]) {
+                        cell.textLabel.text = item.title;
+                    } else if ([item respondsToSelector:@selector(albumTitle)]) {
+                        cell.textLabel.text = item.albumTitle;
+                    } else {
+                        cell.textLabel.text = @"";
+                        cell.detailTextLabel.text = @"";
+                        break;
+                    }
+                    
                     if (item.artist != nil && item.albumTitle != nil) {
                         cell.detailTextLabel.text = [NSString stringWithFormat:@"%@ - %@", item.artist, item.albumTitle];
                     } else {
                         cell.detailTextLabel.text = [NSString stringWithFormat:@"%@", item.artist ? item.artist : item.albumTitle ? item.albumTitle : @""];
                     }
 					placeholderImage = [UIImage imageNamed:@"song" inBundle:[NSBundle bundleForClass:[self class]] compatibleWithTraitCollection:nil];
-				}
+                } else if (self.isUseMockup) {
+                    NSArray *array = (NSArray*)collection;
+                    cell.textLabel.text = array[0];
+                    placeholderImage = [UIImage imageNamed:@"song" inBundle:[NSBundle bundleForClass:[self class]] compatibleWithTraitCollection:nil];
+                }
 				break;
 		}
 		
-		if (collection && (!item.artwork || !item.artwork.bounds.size.width || !item.artwork.bounds.size.height)) {
+		if (self.isUseMockup==NO && collection && (!item.artwork || !item.artwork.bounds.size.width || !item.artwork.bounds.size.height)) {
 			// try harder to find an item in the collection that has artwork
 			for (MPMediaItem *testItem in collection.items) {
 				if (testItem.artwork && testItem.artwork.bounds.size.width && testItem.artwork.bounds.size.height) {
@@ -385,18 +402,23 @@ static const CGFloat kHeaderHeight = 28;
 				}
 			}
 		}
-        UIImage *icon = item.artwork && item.artwork.bounds.size.width && item.artwork.bounds.size.height ? [item.artwork imageWithSize:iconSize] : (self.hideImageIcon) ? placeholderImage : nil;
-		cell.imageView.image = icon;
+        if ([item respondsToSelector:@selector(artwork)]) {
+            UIImage *icon = (item.artwork && item.artwork.bounds.size.width && item.artwork.bounds.size.height) ? [item.artwork imageWithSize:iconSize] : (self.hideImageIcon) ? placeholderImage : nil;
+            cell.imageView.image = icon;
+        }
 		cell.accessoryType = mediaType == CLMediaPickerSongs ? UITableViewCellAccessoryNone : UITableViewCellAccessoryDisclosureIndicator;
 	}
 	
     BOOL isPicked = NO;
     if (self.isSearching) {
+        if (self.filteredIndex.count > indexPath.section) {
         NSString *key = self.filteredIndex[indexPath.section];
         NSArray *collections = [self.filteredItems objectForKey:key];
-        MPMediaItemCollection *col = collections[indexPath.row];
-        
-        isPicked = [self chceckPickedOrNot:col];
+        if (collections.count > indexPath.row) {
+            MPMediaItemCollection *col = collections[indexPath.row];
+            isPicked = [self chceckPickedOrNot:col];
+        }
+        }
     }
     else if (self.query) {
         if (self.currentMediaType == CLMediaPickerSongs) {
@@ -431,6 +453,23 @@ static const CGFloat kHeaderHeight = 28;
         [addButton setAccessibilityLabel:[CLMediaPicker localizedStringForKey:@"Add All"]];
         cell.accessoryView = addButton;
 	}
+    
+    if (self.isUseCustomAccessory && mediaType==CLMediaPickerMock) {
+        [cell.accessoryView removeFromSuperview];
+        UIButton *addButton = [UIButton buttonWithType:UIButtonTypeCustom];
+        [addButton setImage:[UIImage imageNamed:@"add_new"] forState:UIControlStateNormal];
+        [addButton setFrame:CGRectMake(7, 7, 30, 30)];
+        [addButton setIndexPath:indexPath];
+        [addButton addTarget:self action:@selector(customButtonAction:) forControlEvents:UIControlEventTouchUpInside];
+        [addButton setAccessibilityLabel:[CLMediaPicker localizedStringForKey:@"play"]];
+        cell.accessoryView = addButton;
+        if ([self.delegate respondsToSelector:@selector(clMediaPickerAccessory:forItem:)]) {
+            NSMutableArray *items = [[NSMutableArray alloc] init];
+            
+            [self.delegate performSelector:@selector(clMediaPickerAccessory:forItem:) withObject:cell.accessoryView withObject:[MPMediaItemCollection collectionWithItems:items.count > 0 ? items : nil]];
+        }
+    }
+        
 	
 	return cell;
 }
@@ -569,7 +608,11 @@ static const CGFloat kHeaderHeight = 28;
 		}
 		else {
 			collection = self.items[indexPath.row];
-			item = [collection representativeItem];
+            if (self.isUseMockup) {
+                newMediaType = CLMediaPickerSongs;
+            } else {
+                item = [collection representativeItem];
+            }
 		}
 	}
 	else { // top level
@@ -611,12 +654,16 @@ static const CGFloat kHeaderHeight = 28;
 				useItems = YES;
 				break;
 			}
-			case CLMediaPickerGenre:
-				newQuery = [MPMediaQuery genresQuery];
-				[newQuery addFilterPredicate:[MPMediaPropertyPredicate predicateWithValue:@(item.genrePersistentID) forProperty:MPMediaItemPropertyGenrePersistentID]];
-				[newQuery setGroupingType:MPMediaGroupingAlbum];
-				newMediaType = CLMediaPickerAlbums;
-				break;
+            case CLMediaPickerGenre:
+                newQuery = [MPMediaQuery genresQuery];
+                [newQuery addFilterPredicate:[MPMediaPropertyPredicate predicateWithValue:@(item.genrePersistentID) forProperty:MPMediaItemPropertyGenrePersistentID]];
+                [newQuery setGroupingType:MPMediaGroupingAlbum];
+                newMediaType = CLMediaPickerAlbums;
+                break;
+            case CLMediaPickerMock:
+                newQuery = [MPMediaQuery songsQuery];
+                newMediaType = CLMediaPickerSongs;
+                break;
 			default:
 				break;
 		}
@@ -702,7 +749,14 @@ static const CGFloat kHeaderHeight = 28;
     picker.hideCancelButton = self.hideCancelButton;
     picker.hideDoneButton = self.hideDoneButton;
     picker.hideImageIcon = self.hideImageIcon;
+    picker.isUseMockup = self.isUseMockup;
+    picker.isUseCustomAccessory = self.isUseCustomAccessory;
 	return picker;
+}
+
+-(void)setIsUseMockup:(BOOL)isUseMockup{
+    _isUseMockup = isUseMockup;
+    [self loadItems];
 }
 
 #pragma mark - private
@@ -727,11 +781,14 @@ static const CGFloat kHeaderHeight = 28;
 			else {
 				NSArray *collections = [self.query collections];
 				self.items = collections;
+                if (self.isUseMockup) {
+                    self.items = @[@[@"aaaaa"],@[@"qqqqqq"]];
+                }
 			}
 		}
 		else {
 			NSMutableArray *items = [[NSMutableArray alloc] init];
-			for (int i = CLMediaPickerTypeFirst(); i <= CLMediaPickerTypeLast(); i <<= 1) {
+            for (int i = CLMediaPickerTypeFirst(); i <= CLMediaPickerTypeLast()-(self.isUseMockup?CLMediaPickerTypeLast()-CLMediaPickerMock:0); i <<= 1) {
 				if (self.mediaTypes & i) {
 					[items addObject:[[CLMediaTypeEntry alloc] initForMediaType:i]];
 				}
@@ -986,6 +1043,67 @@ static const CGFloat kHeaderHeight = 28;
                           withRowAnimation:UITableViewRowAnimationNone];
 }
 
+- (void)customButtonAction:(UIButton *)sender {
+    NSIndexPath *indexPath = sender.indexPath;
+    if (!indexPath) {
+        return;
+    }
+    if (self.isSearching) {
+        NSString *key = self.filteredIndex[indexPath.section];
+        NSArray *collections = [self.filteredItems objectForKey:key];
+        MPMediaItemCollection *collection = collections[indexPath.row];
+        if (collection.count > 0) {
+            [self.pickedItems addObject:collection];
+        }
+    }
+    else if (self.query) {
+        if (self.currentMediaType == CLMediaPickerSongs) {
+            MPMediaItemCollection *col;
+            if (self.topLevelView) {
+                NSString *key = self.sectionIndex[indexPath.section];
+                col = [self.sectionIndexDict objectForKey:key][indexPath.row];
+            }
+            else if (self.useItems) {
+                col = [MPMediaItemCollection collectionWithItems:@[self.items[indexPath.row]]];
+            }
+            else {
+                col = self.items[indexPath.row];
+            }
+            [self.pickedItems addObject:col];
+        }
+        else {
+            MPMediaItemCollection *collection = self.items[indexPath.row];
+            if ([collection isKindOfClass:[MPMediaPlaylist class]]){
+                // Work around bug in MPMediaQuery where the filter predicates aren't applied on playlist items
+                MPMediaPlaylist *playlist = (MPMediaPlaylist *)collection;
+                MPMediaQuery *query = [MPMediaQuery playlistsQuery];
+                [self addPredicates:query];
+                [query addFilterPredicate:[MPMediaPropertyPredicate predicateWithValue:@(playlist.persistentID) forProperty:MPMediaPlaylistPropertyPersistentID]];
+                [self.pickedItems addObjectsFromArray:query.items];
+            }
+            else if (collection.count > 0) {
+                [self.pickedItems addObject:collection];
+            }
+        }
+    }
+    else { // top level
+        CLMediaTypeEntry *entry = self.items[indexPath.row];
+        MPMediaQuery *query = [self queryForType:entry.mediaType];
+        NSArray *collections = [query collections];
+        for (MPMediaItemCollection *collection in collections) {
+            if (collection.count > 0) {
+                [self.pickedItems addObject:collection];
+            }
+        }
+    }
+    
+    if ([self.delegate respondsToSelector:@selector(clMediaPicker:didPressedCustomAccessory:)]) {
+        NSMutableArray *items = [[NSMutableArray alloc] init];
+        
+        [self.delegate performSelector:@selector(clMediaPicker:didPressedCustomAccessory:) withObject:self withObject:[MPMediaItemCollection collectionWithItems:items.count > 0 ? items : nil]];
+    }
+}
+
 - (MPMediaQuery *)queryForType:(CLMediaPickerType)type {
 	MPMediaQuery *query;
 	switch (type) {
@@ -1010,6 +1128,9 @@ static const CGFloat kHeaderHeight = 28;
 		case CLMediaPickerGenre:
 			query = [MPMediaQuery genresQuery];
 			break;
+        case CLMediaPickerMock:
+            query = [MPMediaQuery songsQuery];
+            break;
 		default:
 			break;
 	}

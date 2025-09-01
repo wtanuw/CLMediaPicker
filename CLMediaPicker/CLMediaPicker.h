@@ -29,12 +29,13 @@ typedef enum {
 	CLMediaPickerSongs      = 1 << 3,
 	CLMediaPickerPodcasts   = 1 << 4,
 	CLMediaPickerAudiobooks = 1 << 5,
-	CLMediaPickerGenre      = 1 << 6,
+    CLMediaPickerGenre      = 1 << 6,
+    CLMediaPickerMock       = 1 << 7,
 	CLMediaPickerAll        = 0xff
 } CLMediaPickerType;
 
-static inline CLMediaPickerType CLMediaPickerTypeFirst() { return CLMediaPickerArtists; }
-static inline CLMediaPickerType CLMediaPickerTypeLast() { return CLMediaPickerGenre; }
+static inline CLMediaPickerType CLMediaPickerTypeFirst(void) { return CLMediaPickerArtists; }
+static inline CLMediaPickerType CLMediaPickerTypeLast(void) { return CLMediaPickerGenre; }
 
 @interface CLMediaPicker : UIViewController<NSCopying, UISearchBarDelegate>
 
@@ -46,6 +47,8 @@ static inline CLMediaPickerType CLMediaPickerTypeLast() { return CLMediaPickerGe
 @property(nonatomic) BOOL showsCloudItems; // default is YES
 @property(nonatomic) BOOL isModal; // default is NO
 @property(nonatomic) BOOL showsItemsWithProtectedAssets; // default is YES
+@property(nonatomic) BOOL isUseCustomAccessory; // default is NO
+@property(nonatomic) BOOL isUseMockup; // default is NO
 
 @property(nonatomic, strong) UIImage *backButtonImage; // if unset, uses text-based button
 @property(nonatomic, strong) UIImage *cancelButtonImage; // if unset, uses text-based button
@@ -75,6 +78,8 @@ static inline CLMediaPickerType CLMediaPickerTypeLast() { return CLMediaPickerGe
 
 - (void)clMediaPicker:(CLMediaPicker *)mediaPicker didPickMediaItems:(MPMediaItemCollection *)mediaItemCollection;
 - (void)clMediaPickerDidCancel:(CLMediaPicker *)mediaPicker;
+- (void)clMediaPickerAccessory:(UIButton *)button forItem:(MPMediaItemCollection *)mediaItemCollection;
+- (void)clMediaPicker:(CLMediaPicker *)mediaPicker didPressedCustomAccessory:(MPMediaItemCollection *)mediaItemCollection;
 
 @end
 
